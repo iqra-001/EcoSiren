@@ -1,0 +1,220 @@
+// ========================================
+// PROSOPIS JULIFLORA DETECTION SYSTEM - KENYA WIDE
+// Google Earth Engine Script
+// Integrated with Antugrow-equivalent Environmental Data
+// ========================================
+
+// STEP 1: DEFINE REGION OF INTEREST (ENTIRE KENYA)
+// Using LSIB dataset to get the exact boundary of Kenya
+var roi = ee.FeatureCollection('USDOS/LSIB_SIMPLE/2017')
+    .filter(ee.Filter.eq('country_na', 'Kenya'));
+
+// Center map on Kenya
+Map.centerObject(roi, 6);
+
+// STEP 2: LOAD DATASETS (SATELLITE + ENVIRONMENTAL)
+
+// 2.1 Sentinel-2 Imagery (Optical)
+// Using dry season (Jan-March 2024) when Prosopis stays green while native vegetation dries
+var startDate = '2024-01-01';
+var endDate = '2024-03-31';
+
+var sentinel = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+    .filterBounds(roi)
+    .filterDate(startDate, endDate)
+    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))
+    .map(function (image) {
+        // Cloud masking
+        var qa = image.select('QA60');
+        var mask = qa.bitwiseAnd(1 << 10).eq(0)
+            .and(qa.bitwiseAnd(1 << 11).eq(0));
+        return image.updateMask(mask).divide(10000);
+    })
+    .median()
+    .clip(roi);
+
+// 2.2 Environmental Data (Matching Antugrow APIs)
+
+// Precipitation (CHIRPS) - Matches /v1/precipitation
+// Prosopis thrives in arid/semi-arid areas (150-750mm rainfall)
+var precip = ee.ImageCollection('UCSB-CHG/CHIRPS/DAILY')
+    .filterDate(startDate, endDate)
+    .mean()
+    .clip(roi)
+    .rename('precipitation');
+
+// Temperature (MODIS) - Matches /v1/temperature
+// Land Surface Temperature
+// Using MODIS V6.1 as V6 is deprecated/missing for recent dates
+var temp = ee.ImageCollection('MODIS/061/MOD11A2')
+    .filterDate(startDate, endDate)
+    .mean()
+    .select('LST_Day_1km')
+    .multiply(0.02).subtract(273.15) // Convert Kelvin to Celsius
+    .clip(roi)
+    .rename('temperature');
+
+// Soil Properties (OpenLandMap) - Matches /v1/clay, /v1/sand, /v1/soil-ph
+// Prosopis prefers specific soil types
+var clay = ee.Image('OpenLandMap/SOL/SOL_CLAY-WFRACTION_USDA-3A1A1A_M/v02')
+    .select('b0').clip(roi).rename('clay');
+
+var sand = ee.Image('OpenLandMap/SOL/SOL_SAND-WFRACTION_USDA-3A1A1A_M/v02')
+    .select('b0').clip(roi).rename('sand');
+
+var ph = ee.Image('OpenLandMap/SOL/SOL_PH-H2O_USDA-4C1A2A_M/v02')
+    .select('b0').clip(roi).rename('ph');
+
+
+// STEP 3: CALCULATE INDICES (Matching Antugrow /v1/ndvi, /v1/evi, etc.)
+
+var bands = ['B2', 'B3', 'B4', 'B8', 'B11', 'B12'];
+var image = sentinel.select(bands);
+
+// NDVI - Normalized Difference Vegetation Index
+var ndvi = image.normalizedDifference(['B8', 'B4']).rename('NDVI');
+
+// EVI - Enhanced Vegetation Index
+var evi = image.expression(
+    '2.5 * ((NIR - RED) / (NIR + 6 * RED - 7.5 * BLUE + 1))',
+    {
+        'NIR': image.select('B8'),
+        'RED': image.select('B4'),
+        'BLUE': image.select('B2')
+    }
+).rename('EVI');
+
+// SAVI - Soil Adjusted Vegetation Index
+var savi = image.expression(
+    '((NIR - RED) / (NIR + RED + 0.5)) * 1.5',
+    {
+        'NIR': image.select('B8'),
+        'RED': image.select('B4')
+    }
+).rename('SAVI');
+
+// NDWI - Normalized Difference Water Index
+var ndwi = image.normalizedDifference(['B8', 'B11']).rename('NDWI');
+
+// Combine all features into one composite image for classification
+var composite = image
+    .addBands(ndvi)
+    .addBands(evi)
+    .addBands(savi)
+    .addBands(ndwi)
+    .addBands(precip)
+    .addBands(temp)
+    .addBands(clay)
+    .addBands(sand)
+    .addBands(ph);
+
+// STEP 4: TRAINING DATA
+// NOTE: For a country-wide map, you need representative points from all over Kenya.
+// These are placeholders. You must add more points in the GEE Code Editor.
+var prosopisSamples = ee.FeatureCollection([
+    ee.Feature(ee.Geometry.Point([39.6464, -0.4536]), { class: 0, name: 'prosopis' }), // Garissa
+    ee.Feature(ee.Geometry.Point([36.0, 0.5]), { class: 0, name: 'prosopis' }), // Baringo (known area)
+    ee.Feature(ee.Geometry.Point([40.1, -0.2]), { class: 0, name: 'prosopis' })
+]);
+
+var nativeSamples = ee.FeatureCollection([
+    ee.Feature(ee.Geometry.Point([37.0, -1.0]), { class: 1, name: 'native' }), // Central
+    ee.Feature(ee.Geometry.Point([35.0, 0.0]), { class: 1, name: 'native' }), // Western
+    ee.Feature(ee.Geometry.Point([38.0, -3.0]), { class: 1, name: 'native' })  // Coastal
+]);
+
+var bareSamples = ee.FeatureCollection([
+    ee.Feature(ee.Geometry.Point([39.0, 2.0]), { class: 2, name: 'bare' }), // North
+    ee.Feature(ee.Geometry.Point([36.0, 2.0]), { class: 2, name: 'bare' }), // Turkana
+    ee.Feature(ee.Geometry.Point([40.0, 3.0]), { class: 2, name: 'bare' })
+]);
+
+var trainingPoints = prosopisSamples.merge(nativeSamples).merge(bareSamples);
+
+// STEP 5: TRAIN MODEL
+// Sampling the composite image at the training points
+var training = composite.sampleRegions({
+    collection: trainingPoints,
+    properties: ['class'],
+    scale: 30,
+    tileScale: 16 // Increased tileScale to handle large area computations
+});
+
+// Train Random Forest Classifier
+var classifier = ee.Classifier.smileRandomForest({
+    numberOfTrees: 100,
+    seed: 42
+}).train({
+    features: training,
+    classProperty: 'class',
+    inputProperties: composite.bandNames()
+});
+
+// Classify the entire country
+var classified = composite.classify(classifier);
+
+// STEP 6: RISK MAPPING & ZONING
+var prosopisMask = classified.eq(0); // Class 0 is Prosopis
+
+// Calculate infestation density (percentage within 1km radius)
+var infestationDensity = prosopisMask
+    .reduceNeighborhood({
+        reducer: ee.Reducer.mean(),
+        kernel: ee.Kernel.circle(1000, 'meters'),
+    })
+    .multiply(100)
+    .rename('infestation_percent');
+
+// Define Safe Zones (Low infestation)
+var safeZones = infestationDensity.lt(10);
+
+// STEP 7: VISUALIZATION
+// True Color
+Map.addLayer(image, { bands: ['B4', 'B3', 'B2'], min: 0, max: 0.3 }, 'True Color (Sentinel-2)', false);
+
+// Classification
+var classVis = {
+    min: 0,
+    max: 2,
+    palette: ['red', 'green', 'tan'] // Prosopis=Red, Native=Green, Bare=Tan
+};
+Map.addLayer(classified, classVis, 'Land Cover Classification');
+
+// Infestation Severity Heatmap
+var heatmapVis = {
+    min: 0,
+    max: 100,
+    palette: ['#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#8e44ad'] // Green to Purple
+};
+Map.addLayer(infestationDensity, heatmapVis, 'Prosopis Infestation Severity (%)');
+
+// Safe Zones
+Map.addLayer(safeZones.selfMask(), { palette: ['#00ff00'] }, 'Safe Planting Zones');
+
+// STEP 8: EXPORTS
+// Export Infestation Map
+Export.image.toDrive({
+    image: infestationDensity,
+    description: 'kenya_prosopis_severity',
+    folder: 'EcoSiren_Kenya',
+    scale: 100, // 100m resolution for country-wide map
+    region: roi,
+    maxPixels: 1e13,
+    fileFormat: 'GeoTIFF'
+});
+
+// Export Safe Zones as Vectors
+Export.table.toDrive({
+    collection: safeZones.reduceToVectors({
+        geometry: roi,
+        scale: 500, // Coarser scale for vectors to avoid huge file size
+        geometryType: 'polygon',
+        maxPixels: 1e13,
+        bestEffort: true
+    }),
+    description: 'kenya_safe_planting_zones',
+    folder: 'EcoSiren_Kenya',
+    fileFormat: 'GeoJSON'
+});
+
+print('Analysis Complete. Check Layers and Tasks tab for exports.');
