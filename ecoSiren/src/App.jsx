@@ -1,22 +1,29 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from "react";
+import { Navigation } from "../components/Navigation";
+import { HomePage } from "../components/HomePage";
+import { MapPage } from "../components/MapPage";
+import { ImpactPage } from "../components/ImpactPage";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [currentPage, setCurrentPage] = useState("home");
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case "home":
+        return <HomePage onNavigate={setCurrentPage} />;
+      case "map":
+        return <MapPage onNavigate={setCurrentPage} />;
+      case "impact":
+        return <ImpactPage onNavigate={setCurrentPage} />;
+      default:
+        return <HomePage onNavigate={setCurrentPage} />;
+    }
+  };
 
   return (
-    <>
-    <div class=" flex justify-center ">
-      <div class="  content-center border-2 rounded-3xl bg-green-200 backdrop-blur-lg w-fit p-2.5">
-         <h1 class="text-4xl text-green-700 ">ECO SIREN</h1>
-
+    <div className="min-h-screen bg-white">
+      <Navigation currentPage={currentPage} onNavigate={setCurrentPage} />
+      {renderPage()}
     </div>
-    </div>
-    
-    </>
-  )
+  );
 }
-
-export default App

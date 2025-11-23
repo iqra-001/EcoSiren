@@ -6,13 +6,11 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { DataService } from "../services/dataService";
 import { ImpactAnalyticsService } from "../services/impactAnalyticsService";
 import { AnalyticsDashboard } from "./AnalyticsDashboard";
-import { EngagementPanel } from "./EngagementPanel";
 import { TrendVisualization } from "./TrendVisualization";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 export function ImpactPage({ onNavigate }) {
   const [impactMetrics, setImpactMetrics] = useState(null);
-  const [engagementAnalytics, setEngagementAnalytics] = useState(null);
   const [predictiveInsights, setPredictiveInsights] = useState(null);
   const [historicalData, setHistoricalData] = useState(null);
   const [summaryStats, setSummaryStats] = useState(null);
@@ -20,19 +18,17 @@ export function ImpactPage({ onNavigate }) {
   // Load AI-powered analytics on mount
   useEffect(() => {
     const metrics = ImpactAnalyticsService.computeImpactMetrics();
-    const engagement = ImpactAnalyticsService.analyzeEngagement();
     const predictions = ImpactAnalyticsService.generatePredictiveInsights();
     const historical = DataService.getHistoricalData();
     const stats = DataService.getSummaryStats();
     
     setImpactMetrics(metrics);
-    setEngagementAnalytics(engagement);
     setPredictiveInsights(predictions);
     setHistoricalData(historical);
     setSummaryStats(stats);
   }, []);
 
-  if (!impactMetrics || !engagementAnalytics || !predictiveInsights) {
+  if (!impactMetrics || !predictiveInsights) {
     return (
       <div className="min-h-screen bg-[#f5f0e8] flex items-center justify-center">
         <div className="text-center">
@@ -49,14 +45,14 @@ export function ImpactPage({ onNavigate }) {
         {/* Header with AI Badge */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-[#2d4a2b]">Community Impact Dashboard</h1>
+            <h1 className="text-[#2d4a2b]">Data-Driven Conservation Dashboard</h1>
             <div className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-[#2d4a2b] to-[#3a5a38] rounded-full">
               <Sparkles className="w-4 h-4 text-white" />
               <span className="text-xs text-white">AI-Powered Analytics</span>
             </div>
           </div>
           <p className="text-stone-600">
-            Real-time insights drawn from map data and community engagement patterns
+            Real-time insights and predictive analytics drawn from environmental monitoring data
           </p>
         </div>
 
@@ -117,7 +113,7 @@ export function ImpactPage({ onNavigate }) {
 
         {/* Tabbed Analytics Interface */}
         <Tabs defaultValue="analytics" className="mb-8">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="analytics">
               <BarChart3 className="w-4 h-4 mr-2" />
               Analytics
@@ -125,10 +121,6 @@ export function ImpactPage({ onNavigate }) {
             <TabsTrigger value="trends">
               <TrendingUp className="w-4 h-4 mr-2" />
               Trends
-            </TabsTrigger>
-            <TabsTrigger value="engagement">
-              <Users className="w-4 h-4 mr-2" />
-              Engagement
             </TabsTrigger>
           </TabsList>
 
@@ -141,10 +133,6 @@ export function ImpactPage({ onNavigate }) {
               historicalData={historicalData} 
               predictions={predictiveInsights}
             />
-          </TabsContent>
-
-          <TabsContent value="engagement">
-            <EngagementPanel analytics={engagementAnalytics} />
           </TabsContent>
         </Tabs>
 
@@ -270,17 +258,16 @@ export function ImpactPage({ onNavigate }) {
 
         {/* Call to Action */}
         <Card className="p-8 bg-[#2d4a2b] text-white text-center border-[#2d4a2b]">
-          <h2 className="mb-4">Join the Movement</h2>
+          <h2 className="mb-4">Explore Data-Driven Insights</h2>
           <p className="text-[#f5f0e8] mb-6 max-w-2xl mx-auto">
-            Every report makes a difference. Help us protect our environment and create 
-            a sustainable future for generations to come.
+            Leverage AI-powered analytics and environmental monitoring data to make informed conservation decisions
           </p>
           <div className="flex gap-4 justify-center">
-            <Button size="lg" onClick={() => onNavigate("report")} className="bg-white text-[#2d4a2b] hover:bg-[#f5f0e8]">
-              Submit a Report
+            <Button size="lg" onClick={() => onNavigate("map")} className="bg-white text-[#2d4a2b] hover:bg-[#f5f0e8]">
+              View Map Data
             </Button>
-            <Button size="lg" variant="outline" onClick={() => onNavigate("map")} className="border-white text-white hover:bg-white/10">
-              View Map
+            <Button size="lg" variant="outline" onClick={() => onNavigate("home")} className="border-white text-white hover:bg-white/10">
+              Learn More
             </Button>
           </div>
         </Card>

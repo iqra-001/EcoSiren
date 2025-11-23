@@ -1,11 +1,10 @@
-import { Leaf, Map, FileText, Info } from "lucide-react";
+import { Leaf, Map, Info } from "lucide-react";
 import { Button } from "./ui/button";
 
 export function Navigation({ currentPage, onNavigate }) {
   const navItems = [
     { id: "home", label: "Home", icon: Leaf },
     { id: "map", label: "Map", icon: Map },
-    { id: "report", label: "Report", icon: FileText },
     { id: "impact", label: "Impact", icon: Info },
   ];
 
@@ -20,4 +19,40 @@ export function Navigation({ currentPage, onNavigate }) {
             <span className="text-[#2d4a2b]">Ecosiren</span>
           </div>
           
-          <
+          <div className="hidden md:flex items-center gap-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Button
+                  key={item.id}
+                  variant={currentPage === item.id ? "default" : "ghost"}
+                  onClick={() => onNavigate(item.id)}
+                  className="flex items-center gap-2"
+                >
+                  <Icon className="w-4 h-4" />
+                  {item.label}
+                </Button>
+              );
+            })}
+          </div>
+
+          <div className="md:hidden flex items-center gap-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Button
+                  key={item.id}
+                  variant={currentPage === item.id ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => onNavigate(item.id)}
+                >
+                  <Icon className="w-4 h-4" />
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}
