@@ -1,10 +1,6 @@
 # EcoSiren Frontend
 
-A modern, interactive web application for monitoring and tracking Prosopis juliflora (Mathenge) infestations across Kenya. Built with React 19, Vite, and Leaflet for real-time geospatial visualization.
-
-![EcoSiren Map](https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=800&h=400&fit=crop)
-
----
+A modern, interactive web application for monitoring and tracking Invasive Plants coverage, like Prosopis juliflora (Mathenge) infestations across Kenya, with an aim of reclaiming that land. Built with React 19, Vite, and GEE integration for real-time geospatial visualisation.
 
 ## ✨ Features
 
@@ -34,6 +30,7 @@ A modern, interactive web application for monitoring and tracking Prosopis julif
 ### Prerequisites
 - Node.js 20.16.0 or higher
 - npm 10.8.1 or higher
+- Google Earth Engine
 
 ### Installation
 
@@ -91,6 +88,7 @@ ecoSiren/
 | **Recharts** | 3.5.0 | Data visualization |
 | **Lucide React** | 0.554.0 | Icon library |
 | **Radix UI** | Latest | Accessible UI components |
+| **GEE** | Latest | Essential for Map Data |
 
 ---
 
