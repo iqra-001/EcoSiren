@@ -1,277 +1,382 @@
-import { useState, useEffect } from "react";
-import { Card } from "./ui/card";
-import { Button } from "./ui/button";
-import { Users, TreePine, Award, Heart, Sparkles, BarChart3, TrendingUp } from "lucide-react";
-import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { DataService } from "../services/dataService";
-import { ImpactAnalyticsService } from "../services/impactAnalyticsService";
-import { AnalyticsDashboard } from "./AnalyticsDashboard";
-import { TrendVisualization } from "./TrendVisualization";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import React, { useState, useEffect } from 'react';
 
-export function ImpactPage({ onNavigate }) {
+// Impact Metrics Component
+const ImpactMetricsCard = ({ metrics }) => {
+  if (!metrics) return <div>Loading impact metrics...</div>;
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-6">
+      <h3 className="text-xl font-semibold mb-6 text-gray-900">Impact Metrics</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="space-y-4">
+          <h4 className="font-semibold text-gray-700 border-b pb-2">Environmental Impact</h4>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">CO2 Offset:</span>
+              <strong className="text-green-600">{metrics.environmentalImpact.co2Offset} tons</strong>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Water Saved:</span>
+              <strong className="text-blue-600">{metrics.environmentalImpact.waterSaved.toLocaleString()} liters</strong>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Biodiversity Score:</span>
+              <strong className="text-purple-600">{metrics.environmentalImpact.biodiversityScore}/100</strong>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Ecosystem Health:</span>
+              <strong className="text-teal-600">{metrics.environmentalImpact.ecosystemHealth}/100</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="font-semibold text-gray-700 border-b pb-2">Community Impact</h4>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Livelihoods:</span>
+              <strong className="text-orange-600">{metrics.communityImpact.livelihoods} families</strong>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Grazing Land Restored:</span>
+              <strong className="text-green-600">{metrics.communityImpact.grazingLandRestored} hectares</strong>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Water Access Improved:</span>
+              <strong className="text-blue-600">{metrics.communityImpact.waterAccessImproved} communities</strong>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Economic Value:</span>
+              <strong className="text-green-600">${metrics.communityImpact.economicValue.toLocaleString()}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="font-semibold text-gray-700 border-b pb-2">Performance Metrics</h4>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Response Time:</span>
+              <strong className="text-gray-700">{metrics.performanceMetrics.responseTime} days</strong>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Success Rate:</span>
+              <strong className="text-green-600">{metrics.performanceMetrics.successRate}%</strong>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Efficiency:</span>
+              <strong className="text-blue-600">{metrics.performanceMetrics.efficiency}/100</strong>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Momentum:</span>
+              <strong className={`${
+                metrics.performanceMetrics.momentum === 'accelerating' ? 'text-green-600' :
+                metrics.performanceMetrics.momentum === 'slowing' ? 'text-red-600' : 'text-yellow-600'
+              }`}>
+                {metrics.performanceMetrics.momentum}
+              </strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Predictive Insights Component
+const PredictiveInsightsCard = ({ insights }) => {
+  if (!insights) return <div>Loading predictive insights...</div>;
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-6">
+      <h3 className="text-xl font-semibold mb-6 text-gray-900">Predictive Insights</h3>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <h4 className="font-semibold text-gray-700">Next Month Projection</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">{insights.nextMonthProjection.expectedReports}</div>
+              <div className="text-sm text-gray-600">Expected Reports</div>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">{insights.nextMonthProjection.projectedCleared}</div>
+              <div className="text-sm text-gray-600">Hectares Cleared</div>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <div className="text-2xl font-bold text-purple-600">{insights.nextMonthProjection.projectedPlanted}</div>
+              <div className="text-sm text-gray-600">Trees Planted</div>
+            </div>
+            <div className="text-center p-4 bg-yellow-50 rounded-lg">
+              <div className="text-2xl font-bold text-yellow-600">{insights.nextMonthProjection.confidence}%</div>
+              <div className="text-sm text-gray-600">Confidence</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="font-semibold text-gray-700">Quarterly Forecast</h4>
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span>Total Impact:</span>
+              <strong className="text-green-600">${insights.quarterlyForecast.totalImpact.toLocaleString()}</strong>
+            </div>
+            <div className="flex justify-between">
+              <span>Risk Level:</span>
+              <strong className={`${
+                insights.quarterlyForecast.riskLevel === 'high' ? 'text-red-600' :
+                insights.quarterlyForecast.riskLevel === 'medium' ? 'text-yellow-600' : 'text-green-600'
+              }`}>
+                {insights.quarterlyForecast.riskLevel}
+              </strong>
+            </div>
+            <div>
+              <span className="font-medium text-gray-700">Opportunities:</span>
+              <ul className="mt-2 space-y-1">
+                {insights.quarterlyForecast.opportunities.map((opportunity, index) => (
+                  <li key={index} className="text-sm text-gray-600">• {opportunity}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <h4 className="font-semibold text-gray-700 mb-4">Recommendations</h4>
+        <div className="space-y-3">
+          {insights.recommendations.map((rec, index) => (
+            <div key={index} className={`p-3 rounded-lg border-l-4 ${
+              rec.priority === 'high' ? 'bg-red-50 border-red-400' :
+              rec.priority === 'medium' ? 'bg-yellow-50 border-yellow-400' :
+              'bg-green-50 border-green-400'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  rec.priority === 'high' ? 'bg-red-100 text-red-800' :
+                  rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-green-100 text-green-800'
+                }`}>
+                  {rec.priority} priority
+                </span>
+                <span className="text-sm font-medium text-gray-700">{rec.action}</span>
+              </div>
+              <div className="mt-2 text-sm text-gray-600">Expected: {rec.expectedImpact}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Engagement Analytics Component
+const EngagementAnalyticsCard = ({ engagement }) => {
+  if (!engagement) return <div>Loading engagement analytics...</div>;
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-6">
+      <h3 className="text-xl font-semibold mb-6 text-gray-900">Community Engagement</h3>
+      
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="text-center p-4 bg-blue-50 rounded-lg">
+          <div className="text-2xl font-bold text-blue-600">{engagement.activationRate}%</div>
+          <div className="text-sm text-gray-600">Activation Rate</div>
+        </div>
+        <div className="text-center p-4 bg-green-50 rounded-lg">
+          <div className="text-2xl font-bold text-green-600">{engagement.retentionRate}%</div>
+          <div className="text-sm text-gray-600">Retention Rate</div>
+        </div>
+        <div className="text-center p-4 bg-purple-50 rounded-lg">
+          <div className="text-2xl font-bold text-purple-600">{engagement.viralityScore}/100</div>
+          <div className="text-sm text-gray-600">Virality Score</div>
+        </div>
+        <div className="text-center p-4 bg-orange-50 rounded-lg">
+          <div className={`text-2xl font-bold ${
+            engagement.participationTrend === 'rising' ? 'text-green-600' :
+            engagement.participationTrend === 'declining' ? 'text-red-600' : 'text-yellow-600'
+          }`}>
+            {engagement.participationTrend}
+          </div>
+          <div className="text-sm text-gray-600">Participation Trend</div>
+        </div>
+      </div>
+
+      <div>
+        <h4 className="font-semibold text-gray-700 mb-4">Top Performers</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {engagement.topPerformers.map((performer, index) => (
+            <div key={index} className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="font-semibold text-gray-800">{performer.region}</div>
+              <div className="text-2xl font-bold text-blue-600 my-2">{performer.score}/100</div>
+              <div className="text-sm text-gray-600">{performer.achievement}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const ImpactPage = ({ onNavigate }) => {
   const [impactMetrics, setImpactMetrics] = useState(null);
   const [predictiveInsights, setPredictiveInsights] = useState(null);
-  const [historicalData, setHistoricalData] = useState(null);
-  const [summaryStats, setSummaryStats] = useState(null);
+  const [engagementAnalytics, setEngagementAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Load AI-powered analytics on mount
   useEffect(() => {
-    const metrics = ImpactAnalyticsService.computeImpactMetrics();
-    const predictions = ImpactAnalyticsService.generatePredictiveInsights();
-    const historical = DataService.getHistoricalData();
-    const stats = DataService.getSummaryStats();
-    
-    setImpactMetrics(metrics);
-    setPredictiveInsights(predictions);
-    setHistoricalData(historical);
-    setSummaryStats(stats);
+    const loadData = async () => {
+      setLoading(true);
+      
+      setTimeout(() => {
+        setImpactMetrics(ImpactAnalyticsService.computeImpactMetrics());
+        setPredictiveInsights(ImpactAnalyticsService.generatePredictiveInsights());
+        setEngagementAnalytics(ImpactAnalyticsService.analyzeEngagement());
+        setLoading(false);
+      }, 1000);
+    };
+
+    loadData();
   }, []);
 
-  if (!impactMetrics || !predictiveInsights) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-[#f5f0e8] flex items-center justify-center">
-        <div className="text-center">
-          <Sparkles className="w-12 h-12 text-[#2d4a2b] animate-pulse mx-auto mb-4" />
-          <p className="text-stone-600">Loading AI analytics...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading impact analytics...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f0e8]">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header with AI Badge */}
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-[#2d4a2b]">Data-Driven Conservation Dashboard</h1>
-            <div className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-[#2d4a2b] to-[#3a5a38] rounded-full">
-              <Sparkles className="w-4 h-4 text-white" />
-              <span className="text-xs text-white">AI-Powered Analytics</span>
-            </div>
-          </div>
-          <p className="text-stone-600">
-            Real-time insights and predictive analytics drawn from environmental monitoring data
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900">Impact Analytics Dashboard</h1>
+          <p className="text-gray-600 mt-2">Comprehensive analysis of environmental and community impact</p>
         </div>
-
-        {/* Key Metrics - Updated from DataService */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <Card className="p-6 border-stone-200">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-[#e8f1e8] rounded-lg flex items-center justify-center">
-                <Users className="w-5 h-5 text-[#2d4a2b]" />
-              </div>
-              <div>
-                <p className="text-2xl text-[#2d4a2b]">{summaryStats.totalReports}</p>
-              </div>
-            </div>
-            <p className="text-sm text-stone-600">Total Community Reports</p>
-            <p className="text-xs text-[#3a5a38] mt-1">↑ From map data</p>
-          </Card>
-
-          <Card className="p-6 border-stone-200">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-[#f4d7c3] rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-[#c19a6b]" />
-              </div>
-              <div>
-                <p className="text-2xl text-[#c19a6b]">{summaryStats.areasReported}</p>
-              </div>
-            </div>
-            <p className="text-sm text-stone-600">Areas Monitored</p>
-            <p className="text-xs text-[#3a5a38] mt-1">↑ Active regions</p>
-          </Card>
-
-          <Card className="p-6 border-stone-200">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-[#f4d7c3] rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-[#a0522d]" />
-              </div>
-              <div>
-                <p className="text-2xl text-[#a0522d]">{summaryStats.hectaresCleared}</p>
-              </div>
-            </div>
-            <p className="text-sm text-stone-600">Hectares Cleared</p>
-            <p className="text-xs text-[#3a5a38] mt-1">↑ AI computed</p>
-          </Card>
-
-          <Card className="p-6 border-stone-200">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-[#e8f1e8] rounded-lg flex items-center justify-center">
-                <TreePine className="w-5 h-5 text-[#3a5a38]" />
-              </div>
-              <div>
-                <p className="text-2xl text-[#3a5a38]">{summaryStats.treesPlanted.toLocaleString()}</p>
-              </div>
-            </div>
-            <p className="text-sm text-stone-600">Native Trees Planted</p>
-            <p className="text-xs text-[#3a5a38] mt-1">↑ Ecosystem restoration</p>
-          </Card>
+        
+        <div className="space-y-6">
+          <ImpactMetricsCard metrics={impactMetrics} />
+          <PredictiveInsightsCard insights={predictiveInsights} />
+          <EngagementAnalyticsCard engagement={engagementAnalytics} />
         </div>
-
-        {/* Tabbed Analytics Interface */}
-        <Tabs defaultValue="analytics" className="mb-8">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="analytics">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger value="trends">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Trends
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="analytics">
-            <AnalyticsDashboard metrics={impactMetrics} />
-          </TabsContent>
-
-          <TabsContent value="trends">
-            <TrendVisualization 
-              historicalData={historicalData} 
-              predictions={predictiveInsights}
-            />
-          </TabsContent>
-        </Tabs>
-
-        {/* AI Recommendations */}
-        <Card className="p-6 mb-8 border-stone-200">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#2d4a2b] to-[#3a5a38] rounded-lg flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <h3 className="text-stone-900">AI-Generated Recommendations</h3>
-          </div>
-
-          <div className="space-y-3">
-            {predictiveInsights.recommendations.map((rec, index) => (
-              <div 
-                key={index}
-                className={`p-4 rounded-lg border ${
-                  rec.priority === "high" 
-                    ? "bg-[#f4d7c3]/30 border-[#a0522d]/30" 
-                    : rec.priority === "medium"
-                    ? "bg-[#ebe6dd] border-stone-300"
-                    : "bg-[#e8f1e8] border-[#3a5a38]/20"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`px-2 py-1 rounded text-xs ${
-                    rec.priority === "high"
-                      ? "bg-[#a0522d] text-white"
-                      : rec.priority === "medium"
-                      ? "bg-[#c19a6b] text-white"
-                      : "bg-[#3a5a38] text-white"
-                  }`}>
-                    {rec.priority.toUpperCase()}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-stone-900 mb-1">{rec.action}</p>
-                    <p className="text-xs text-stone-600">
-                      Expected Impact: {rec.expectedImpact}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Wangari Maathai Section */}
-        <Card className="p-8 mb-8 bg-gradient-to-r from-[#ebe6dd] to-[#e8f1e8] border-stone-200">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Award className="w-6 h-6 text-[#2d4a2b]" />
-                <h2 className="text-[#2d4a2b]">Honoring Wangari Maathai's Legacy</h2>
-              </div>
-              <p className="text-stone-700 mb-4">
-                Professor Wangari Maathai, Kenya's first female Nobel laureate, founded the Green Belt Movement 
-                and inspired millions to take action for environmental conservation. Through grassroots efforts, 
-                she demonstrated that ordinary citizens could make extraordinary impacts.
-              </p>
-              <p className="text-stone-700 mb-4">
-                Ecosiren continues her vision by empowering communities to protect their environment, 
-                combat invasive species, and restore native ecosystems through collective action.
-              </p>
-              <div className="bg-white rounded-lg p-4 border-l-4 border-[#2d4a2b]">
-                <p className="text-sm italic text-stone-700">
-                  "It's the little things citizens do. That's what will make the difference. 
-                  My little thing is planting trees."
-                </p>
-                <p className="text-sm text-[#3a5a38] mt-2">— Wangari Maathai</p>
-              </div>
-            </div>
-            <div>
-              <ImageWithFallback
-                src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=600"
-                alt="Community tree planting"
-                className="rounded-lg shadow-lg w-full h-64 object-cover"
-              />
-            </div>
-          </div>
-        </Card>
-
-        {/* Success Stories */}
-        <div className="mb-8">
-          <h2 className="text-[#2d4a2b] mb-6">Recent Success Stories</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            <Card className="p-6 border-stone-200">
-              <div className="w-12 h-12 bg-[#e8f1e8] rounded-full flex items-center justify-center mb-4">
-                <Heart className="w-6 h-6 text-[#2d4a2b]" />
-              </div>
-              <h3 className="text-stone-900 mb-2">Baringo Community Action</h3>
-              <p className="text-sm text-stone-600 mb-3">
-                Local community successfully cleared 15 hectares of Prosopis infestation, 
-                restoring grazing land for livestock.
-              </p>
-              <p className="text-xs text-stone-500">3 weeks ago</p>
-            </Card>
-
-            <Card className="p-6 border-stone-200">
-              <div className="w-12 h-12 bg-[#e8f1e8] rounded-full flex items-center justify-center mb-4">
-                <TreePine className="w-6 h-6 text-[#3a5a38]" />
-              </div>
-              <h3 className="text-stone-900 mb-2">Laikipia Restoration Project</h3>
-              <p className="text-sm text-stone-600 mb-3">
-                Over 2,000 native trees planted in cleared areas, creating new habitat 
-                for local wildlife and improving water retention.
-              </p>
-              <p className="text-xs text-stone-500">1 month ago</p>
-            </Card>
-
-            <Card className="p-6 border-stone-200">
-              <div className="w-12 h-12 bg-[#f4d7c3] rounded-full flex items-center justify-center mb-4">
-                <Users className="w-6 h-6 text-[#c19a6b]" />
-              </div>
-              <h3 className="text-stone-900 mb-2">Youth Engagement Initiative</h3>
-              <p className="text-sm text-stone-600 mb-3">
-                150 young people trained in identification and management of invasive species, 
-                expanding community monitoring capacity.
-              </p>
-              <p className="text-xs text-stone-500">2 months ago</p>
-            </Card>
-          </div>
-        </div>
-
-        {/* Call to Action */}
-        <Card className="p-8 bg-[#2d4a2b] text-white text-center border-[#2d4a2b]">
-          <h2 className="mb-4">Explore Data-Driven Insights</h2>
-          <p className="text-[#f5f0e8] mb-6 max-w-2xl mx-auto">
-            Leverage AI-powered analytics and environmental monitoring data to make informed conservation decisions
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Button size="lg" onClick={() => onNavigate("map")} className="bg-white text-[#2d4a2b] hover:bg-[#f5f0e8]">
-              View Map Data
-            </Button>
-            <Button size="lg" variant="outline" onClick={() => onNavigate("home")} className="border-white text-white hover:bg-white/10">
-              Learn More
-            </Button>
-          </div>
-        </Card>
       </div>
     </div>
   );
+};
+
+// Impact Analytics Service
+class ImpactAnalyticsService {
+  static computeImpactMetrics() {
+    const stats = {
+      treesPlanted: 8500,
+      hectaresCleared: 45,
+      safeZones: 2,
+      areasReported: 8,
+      highRiskAreas: 2
+    };
+
+    // Environmental Impact Calculations
+    const co2Offset = Math.round((stats.treesPlanted * 21) / 1000 * 10) / 10;
+    const waterSaved = Math.round(stats.hectaresCleared * 100 * 200 * 365);
+    const biodiversityScore = Math.min(100, Math.round(
+      (stats.safeZones / stats.areasReported) * 100 * 0.7 + 
+      (stats.treesPlanted / 10000) * 30
+    ));
+    const ecosystemHealth = Math.round(
+      100 - (stats.highRiskAreas / stats.areasReported) * 50 - 
+      ((stats.areasReported - stats.safeZones - stats.highRiskAreas) / stats.areasReported) * 25
+    );
+
+    // Community Impact Calculations
+    const livelihoods = Math.round(stats.hectaresCleared * 4.5);
+    const grazingLandRestored = Math.round(stats.hectaresCleared * 0.85 * 10) / 10;
+    const waterAccessImproved = Math.floor(stats.safeZones * 1.5);
+    const economicValue = Math.round(stats.hectaresCleared * 500);
+
+    return {
+      environmentalImpact: {
+        co2Offset,
+        waterSaved,
+        biodiversityScore,
+        ecosystemHealth
+      },
+      communityImpact: {
+        livelihoods,
+        grazingLandRestored,
+        waterAccessImproved,
+        economicValue
+      },
+      performanceMetrics: {
+        responseTime: 8,
+        successRate: 85,
+        efficiency: 78,
+        momentum: "accelerating"
+      }
+    };
+  }
+
+  static generatePredictiveInsights() {
+    return {
+      nextMonthProjection: {
+        expectedReports: 68,
+        projectedCleared: 18,
+        projectedPlanted: 1200,
+        confidence: 82
+      },
+      quarterlyForecast: {
+        totalImpact: 28500,
+        riskLevel: "medium",
+        opportunities: [
+          "Expand tree planting programs in safe zones",
+          "Leverage community momentum for large-scale interventions",
+          "Partner with local organizations for resource mobilization"
+        ]
+      },
+      recommendations: [
+        {
+          priority: "high",
+          action: "Deploy rapid response teams to high-risk areas",
+          expectedImpact: "Could prevent 10+ hectares of spread"
+        },
+        {
+          priority: "medium",
+          action: "Scale up verification and response capacity",
+          expectedImpact: "Maintain rapid response to increased reporting"
+        },
+        {
+          priority: "medium",
+          action: "Launch community training programs in underserved regions",
+          expectedImpact: "Expand monitoring coverage by 30%"
+        }
+      ]
+    };
+  }
+
+  static analyzeEngagement() {
+    return {
+      participationTrend: "rising",
+      activationRate: 75,
+      retentionRate: 64,
+      viralityScore: 82,
+      topPerformers: [
+        {
+          region: "Baringo County",
+          score: 92,
+          achievement: "Outstanding Community Champion"
+        },
+        {
+          region: "Turkana Region",
+          score: 87,
+          achievement: "Exceptional Environmental Steward"
+        },
+        {
+          region: "Samburu Area",
+          score: 79,
+          achievement: "Dedicated Conservation Leader"
+        }
+      ]
+    };
+  }
 }

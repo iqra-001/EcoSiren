@@ -1,6 +1,6 @@
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { AIInsights } from "../services/aiPredictionService";
+import {AIInsights} from "../services/aiPredictionService";
 import { TrendingUp, TrendingDown, Minus, Brain, AlertTriangle, CheckCircle } from "lucide-react";
 
 export function AIInsightsPanel({ insights }) {

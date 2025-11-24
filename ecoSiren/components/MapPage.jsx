@@ -1,317 +1,428 @@
-import { useState, useEffect } from "react";
-import { Card } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
-import { MapPin, Info, ZoomIn, ZoomOut, Sparkles, X } from "lucide-react";
-import { Switch } from "./ui/switch";
-import { Label } from "./ui/label";
-import { 
-  AIPredictionService
-} from "../services/aiPredictionService";
-import { DataService } from "../services/dataService";
-import { AIInsightsPanel } from "./AIInsightsPanel";
-import { StatisticsPanel } from "./StatisticsPanel";
-import { PredictionHeatmap } from "./PredictionHeatmap";
+import React, { useState, useEffect } from 'react';
 
-export function MapPage({ onNavigate }) {
-  const [selectedPoint, setSelectedPoint] = useState(null);
-  const [selectedPrediction, setSelectedPrediction] = useState(null);
-  const [zoom, setZoom] = useState(1);
-  const [showPredictions, setShowPredictions] = useState(true);
-  const [predictions, setPredictions] = useState([]);
-  const [insights, setInsights] = useState(null);
-  const [statistics, setStatistics] = useState(null);
-  const [infestationPoints, setInfestationPoints] = useState([]);
-
-  // Generate AI predictions and insights on component mount
-  useEffect(() => {
-    const data = DataService.getInfestationPoints();
-    const generatedPredictions = AIPredictionService.generatePredictions(data);
-    const generatedInsights = AIPredictionService.generateInsights(data);
-    const generatedStatistics = AIPredictionService.computeStatistics(data);
-    
-    setInfestationPoints(data);
-    setPredictions(generatedPredictions);
-    setInsights(generatedInsights);
-    setStatistics(generatedStatistics);
-  }, []);
-
-  const getLevelColor = (level) => {
+// Prediction Zone Component
+const PredictionZoneMarker = ({ zone, onClick }) => {
+  const getRiskColor = (level) => {
     switch (level) {
-      case "high":
-        return "bg-red-500";
-      case "medium":
-        return "bg-orange-400";
-      case "low":
-        return "bg-yellow-400";
-      case "none":
-        return "bg-[#3a5a38]";
-      default:
-        return "bg-gray-400";
-    }
-  };
-
-  const getLevelBadgeVariant = (level) => {
-    switch (level) {
-      case "high":
-        return "destructive";
-      case "medium":
-        return "default";
-      case "low":
-        return "secondary";
-      case "none":
-        return "outline";
-      default:
-        return "outline";
+      case 'high': return '#ff4444';
+      case 'medium': return '#ffaa00';
+      case 'low': return '#44ff44';
+      default: return '#cccccc';
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f0e8]">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-[#2d4a2b] mb-2">Infestation Map</h1>
-          <p className="text-stone-600">
-            Interactive map showing Prosopis juliflora infestation levels across regions
-          </p>
+    <div 
+      className="prediction-zone-marker"
+      style={{
+        backgroundColor: getRiskColor(zone.predictedLevel),
+        left: `${zone.lng}%`,
+        top: `${zone.lat}%`,
+      }}
+      onClick={() => onClick(zone)}
+      title={`${zone.predictedLevel} risk - ${zone.timeframe}`}
+    >
+      <div className="risk-level">{zone.riskLevel}</div>
+      <div className="confidence">{zone.confidence}%</div>
+    </div>
+  );
+};
+
+// Infestation Point Component
+const InfestationPointMarker = ({ point, onClick }) => {
+  const getLevelColor = (level) => {
+    switch (level) {
+      case 'high': return '#ff0000';
+      case 'medium': return '#ff8800';
+      case 'low': return '#ffff00';
+      case 'none': return '#00ff00';
+      default: return '#cccccc';
+    }
+  };
+
+  return (
+    <div 
+      className="infestation-point-marker"
+      style={{
+        backgroundColor: getLevelColor(point.level),
+        left: `${point.lng}%`,
+        top: `${point.lat}%`,
+      }}
+      onClick={() => onClick(point)}
+      title={`${point.location} - ${point.level} risk`}
+    >
+      <div className="reports">{point.reports}</div>
+    </div>
+  );
+};
+
+// AI Insights Panel
+const AIInsightsPanel = ({ insights, statistics }) => {
+  if (!insights || !statistics) return <div>Loading insights...</div>;
+
+  return (
+    <div className="ai-insights-panel p-4 bg-gray-50 rounded-lg">
+      <h3 className="text-lg font-semibold mb-4">AI Analysis & Insights</h3>
+      
+      <div className="mb-4">
+        <h4 className="font-medium mb-2">Overall Trend</h4>
+        <div className={`trend-indicator ${insights.overallTrend} inline-block px-3 py-1 rounded-full text-white ${
+          insights.overallTrend === 'increasing' ? 'bg-red-500' : 
+          insights.overallTrend === 'decreasing' ? 'bg-green-500' : 'bg-yellow-500'
+        }`}>
+          {insights.overallTrend}
         </div>
+      </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Map Area */}
+      <div className="mb-4">
+        <h4 className="font-medium mb-2">High Risk Areas</h4>
+        <ul className="risk-areas list-disc list-inside">
+          {insights.highRiskAreas.map((area, index) => (
+            <li key={index} className="text-sm">{area}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mb-4">
+        <h4 className="font-medium mb-2">Statistics</h4>
+        <div className="stats-grid grid grid-cols-2 gap-2 text-sm">
+          <div className="stat-item">
+            <span>Total Infested:</span>
+            <strong className="ml-1">{statistics.totalInfested}</strong>
+          </div>
+          <div className="stat-item">
+            <span>Clear Zones:</span>
+            <strong className="ml-1">{statistics.clearZones}</strong>
+          </div>
+          <div className="stat-item">
+            <span>Critical Areas:</span>
+            <strong className="ml-1">{statistics.criticalAreas}</strong>
+          </div>
+          <div className="stat-item">
+            <span>Avg Spread Rate:</span>
+            <strong className="ml-1">{statistics.averageSpreadRate}</strong>
+          </div>
+          <div className="stat-item">
+            <span>Community Engagement:</span>
+            <strong className="ml-1">{statistics.communityEngagement}%</strong>
+          </div>
+          <div className="stat-item">
+            <span>Prediction Accuracy:</span>
+            <strong className="ml-1">{statistics.predictionAccuracy}%</strong>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <h4 className="font-medium mb-2">Recommended Actions</h4>
+        <ul className="recommendations list-disc list-inside">
+          {insights.recommendedActions.map((action, index) => (
+            <li key={index} className="text-sm">{action}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+export const MapPage = ({ onNavigate }) => {
+  const [infestationPoints, setInfestationPoints] = useState([]);
+  const [predictionZones, setPredictionZones] = useState([]);
+  const [aiInsights, setAiInsights] = useState(null);
+  const [statistics, setStatistics] = useState(null);
+  const [selectedPoint, setSelectedPoint] = useState(null);
+  const [selectedZone, setSelectedZone] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      
+      // Load infestation data
+      const points = [
+        { id: 1, lat: 35, lng: 45, level: "high", location: "Baringo County", reports: 24, lastReportDate: new Date(2024, 10, 15) },
+        { id: 2, lat: 55, lng: 30, level: "high", location: "Turkana Region", reports: 18, lastReportDate: new Date(2024, 10, 18) },
+        { id: 3, lat: 70, lng: 65, level: "medium", location: "Samburu Area", reports: 12, lastReportDate: new Date(2024, 10, 20) },
+        { id: 4, lat: 25, lng: 70, level: "medium", location: "Tana River", reports: 9, lastReportDate: new Date(2024, 10, 12) },
+        { id: 5, lat: 45, lng: 80, level: "low", location: "Garissa Region", reports: 5, lastReportDate: new Date(2024, 10, 10) },
+        { id: 6, lat: 80, lng: 40, level: "low", location: "Isiolo County", reports: 3, lastReportDate: new Date(2024, 10, 8) },
+        { id: 7, lat: 60, lng: 50, level: "none", location: "Marsabit Safe Zone", reports: 0 },
+        { id: 8, lat: 40, lng: 25, level: "none", location: "Laikipia Restoration", reports: 0 },
+      ];
+      setInfestationPoints(points);
+      
+      // Generate predictions
+      const predictions = AIPredictionService.generatePredictions(points);
+      setPredictionZones(predictions);
+      
+      // Generate insights and statistics
+      setAiInsights(AIPredictionService.generateInsights(points));
+      setStatistics(AIPredictionService.computeStatistics(points));
+      
+      setLoading(false);
+    };
+
+    loadData();
+  }, []);
+
+  const handlePointClick = (point) => {
+    setSelectedPoint(point);
+    setSelectedZone(null);
+  };
+
+  const handleZoneClick = (zone) => {
+    setSelectedZone(zone);
+    setSelectedPoint(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading prediction data...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">AI-Powered Infestation Prediction Map</h1>
+          <p className="text-gray-600 mt-2">Real-time monitoring and predictive analysis of Prosopis juliflora spread</p>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <Card className="p-6 border-stone-200">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-stone-900">Regional Map View</h3>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setZoom(Math.min(zoom + 0.2, 2))}>
-                    <ZoomIn className="w-4 h-4" />
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setZoom(Math.max(zoom - 0.2, 0.6))}>
-                    <ZoomOut className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Map Canvas */}
-              <div className="relative bg-[#ebe6dd] rounded-lg border-2 border-[#c19a6b] overflow-hidden" style={{ height: "500px" }}>
-                {/* AI Predictions Toggle */}
-                <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg p-3 border border-stone-200">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#2d4a2b]" />
-                    <Label htmlFor="predictions-toggle" className="text-sm text-stone-700 cursor-pointer">
-                      AI Predictions
-                    </Label>
-                    <Switch
-                      id="predictions-toggle"
-                      checked={showPredictions}
-                      onCheckedChange={setShowPredictions}
-                    />
-                  </div>
-                </div>
-
-                {/* Simulated map background */}
-                <div className="absolute inset-0 opacity-20">
-                  <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="gray" strokeWidth="0.5"/>
-                      </pattern>
-                    </defs>
-                    <rect width="100%" height="100%" fill="url(#grid)" />
-                  </svg>
-                </div>
-
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="map-visualization relative h-96 bg-blue-50 rounded-lg border-2 border-gray-200">
                 {/* Infestation Points */}
-                <div className="absolute inset-0" style={{ transform: `scale(${zoom})`, transformOrigin: "center" }}>
-                  {infestationPoints.map((point) => (
-                    <button
-                      key={point.id}
-                      onClick={() => { 
-                        setSelectedPoint(point);
-                        setSelectedPrediction(null);
-                      }}
-                      className={`absolute w-8 h-8 rounded-full ${getLevelColor(point.level)} 
-                        border-2 border-white shadow-lg transition-transform hover:scale-125 
-                        flex items-center justify-center cursor-pointer
-                        ${selectedPoint?.id === point.id ? "scale-125 ring-4 ring-blue-300" : ""}`}
-                      style={{
-                        left: `${point.lng}%`,
-                        top: `${point.lat}%`,
-                        transform: "translate(-50%, -50%)",
-                      }}
-                    >
-                      <MapPin className="w-4 h-4 text-white" />
-                    </button>
-                  ))}
+                {infestationPoints.map(point => (
+                  <InfestationPointMarker
+                    key={point.id}
+                    point={point}
+                    onClick={handlePointClick}
+                  />
+                ))}
+                
+                {/* Prediction Zones */}
+                {predictionZones.map(zone => (
+                  <PredictionZoneMarker
+                    key={zone.id}
+                    zone={zone}
+                    onClick={handleZoneClick}
+                  />
+                ))}
+                
+                <div className="map-background absolute inset-0 flex items-center justify-center text-gray-500">
+                  Interactive Map Visualization
                 </div>
-
-                {/* Prediction Heatmap */}
-                <PredictionHeatmap 
-                  predictions={predictions} 
-                  zoom={zoom} 
-                  showPredictions={showPredictions}
-                  onPredictionClick={(prediction) => {
-                    setSelectedPrediction(prediction);
-                    setSelectedPoint(null);
-                  }}
-                />
-
-                {/* Info overlay for selected point */}
-                {selectedPoint && (
-                  <div className="absolute top-4 left-4 right-4 bg-white rounded-lg shadow-lg p-4 border border-stone-200">
-                    <button 
-                      onClick={() => setSelectedPoint(null)}
-                      className="absolute top-2 right-2 text-stone-400 hover:text-stone-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                    <div className="flex justify-between items-start mb-2 pr-6">
-                      <h4 className="text-stone-900">{selectedPoint.location}</h4>
-                      <Badge variant={getLevelBadgeVariant(selectedPoint.level)}>
-                        {selectedPoint.level.toUpperCase()}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-stone-600 mb-2">
-                      {selectedPoint.reports} community reports
-                    </p>
-                    <p className="text-sm text-stone-700">
-                      {selectedPoint.level === "none" 
-                        ? "This area is clear and suitable for tree planting initiatives"
-                        : `This area has ${selectedPoint.level} levels of Prosopis juliflora infestation`}
-                    </p>
-                  </div>
-                )}
-
-                {/* Info overlay for selected prediction */}
-                {selectedPrediction && (
-                  <div className="absolute top-4 left-4 right-4 bg-gradient-to-br from-[#2d4a2b] to-[#3a5a38] text-white rounded-lg shadow-lg p-4 border-2 border-[#c19a6b]">
-                    <button 
-                      onClick={() => setSelectedPrediction(null)}
-                      className="absolute top-2 right-2 text-white/70 hover:text-white"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                    <div className="flex items-center gap-2 mb-3 pr-6">
-                      <Sparkles className="w-5 h-5" />
-                      <h4>AI Prediction Zone</h4>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <p className="text-white/70 mb-1">Risk Level</p>
-                        <p className="text-lg">{selectedPrediction.riskLevel}%</p>
-                      </div>
-                      <div>
-                        <p className="text-white/70 mb-1">Confidence</p>
-                        <p className="text-lg">{selectedPrediction.confidence}%</p>
-                      </div>
-                      <div>
-                        <p className="text-white/70 mb-1">Severity</p>
-                        <Badge variant="outline" className="text-white border-white">
-                          {selectedPrediction.predictedLevel.toUpperCase()}
-                        </Badge>
-                      </div>
-                      <div>
-                        <p className="text-white/70 mb-1">Timeframe</p>
-                        <p>{selectedPrediction.timeframe}</p>
-                      </div>
-                    </div>
-                    <p className="text-sm text-white/90 mt-3">
-                      This zone has a {selectedPrediction.riskLevel}% risk of infestation within {selectedPrediction.timeframe}.
-                    </p>
-                  </div>
-                )}
               </div>
-            </Card>
 
-            {/* AI Insights Panel */}
-            {insights && (
-              <AIInsightsPanel insights={insights} />
-            )}
-
-            {/* Statistics Panel */}
-            {statistics && (
-              <StatisticsPanel statistics={statistics} />
-            )}
+              {/* Legend */}
+              <div className="mt-4 flex flex-wrap gap-4 text-sm">
+                <div className="flex items-center">
+                  <div className="w-4 h-4 bg-red-500 rounded-full mr-2"></div>
+                  <span>High Risk</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-4 h-4 bg-yellow-500 rounded-full mr-2"></div>
+                  <span>Medium Risk</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
+                  <span>Low Risk</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-4 h-4 bg-blue-500 rounded-full mr-2"></div>
+                  <span>Prediction Zone</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Legend and Stats */}
           <div className="space-y-6">
-            {/* Legend */}
-            <Card className="p-6 border-stone-200">
-              <h3 className="text-stone-900 mb-4">Map Legend</h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-red-500 border-2 border-white shadow" />
-                  <div>
-                    <p className="text-stone-900">High Infestation</p>
-                    <p className="text-sm text-stone-600">Immediate action needed</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-orange-400 border-2 border-white shadow" />
-                  <div>
-                    <p className="text-stone-900">Medium Infestation</p>
-                    <p className="text-sm text-stone-600">Monitor and control</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-yellow-400 border-2 border-white shadow" />
-                  <div>
-                    <p className="text-stone-900">Low Infestation</p>
-                    <p className="text-sm text-stone-600">Early stage detection</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-[#3a5a38] border-2 border-white shadow" />
-                  <div>
-                    <p className="text-stone-900">Clear Zone</p>
-                    <p className="text-sm text-stone-600">Ideal for tree planting</p>
-                  </div>
-                </div>
-              </div>
-
-              {showPredictions && (
-                <>
-                  <div className="my-4 border-t border-stone-200" />
-                  <h4 className="text-sm text-stone-900 mb-3 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#2d4a2b]" />
-                    AI Predictions
-                  </h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-4 h-4 rounded-full bg-red-500/50 border border-red-500 animate-pulse" />
-                      <span className="text-stone-700">High Risk Zone</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-4 h-4 rounded-full bg-orange-400/50 border border-orange-400" />
-                      <span className="text-stone-700">Medium Risk Zone</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-4 h-4 rounded-full bg-yellow-400/50 border border-yellow-400" />
-                      <span className="text-stone-700">Low Risk Zone</span>
-                    </div>
-                  </div>
-                </>
-              )}
-            </Card>
-
-            {/* Call to Action */}
-            <Card className="p-6 bg-[#ebe6dd] border-[#c19a6b]">
-              <div className="flex gap-3 mb-3">
-                <Info className="w-5 h-5 text-[#2d4a2b] flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-[#2d4a2b] mb-3">
-                    See an infestation in your area? Help us keep the map updated.
+            {selectedPoint && (
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">Selected Point Details</h3>
+                <div className="space-y-2">
+                  <p><strong className="text-gray-700">Location:</strong> {selectedPoint.location}</p>
+                  <p><strong className="text-gray-700">Risk Level:</strong> 
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                      selectedPoint.level === 'high' ? 'bg-red-100 text-red-800' :
+                      selectedPoint.level === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                      selectedPoint.level === 'low' ? 'bg-green-100 text-green-800' :
+                      'bg-blue-100 text-blue-800'
+                    }`}>
+                      {selectedPoint.level}
+                    </span>
                   </p>
-                  <Button size="sm" onClick={() => onNavigate("report")} className="w-full">
-                    Submit Report
-                  </Button>
+                  <p><strong className="text-gray-700">Reports:</strong> {selectedPoint.reports}</p>
+                  {selectedPoint.lastReportDate && (
+                    <p><strong className="text-gray-700">Last Report:</strong> {selectedPoint.lastReportDate.toLocaleDateString()}</p>
+                  )}
                 </div>
               </div>
-            </Card>
+            )}
+
+            {selectedZone && (
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">Prediction Zone Details</h3>
+                <div className="space-y-2">
+                  <p><strong className="text-gray-700">Predicted Level:</strong> 
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                      selectedZone.predictedLevel === 'high' ? 'bg-red-100 text-red-800' :
+                      selectedZone.predictedLevel === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-green-100 text-green-800'
+                    }`}>
+                      {selectedZone.predictedLevel}
+                    </span>
+                  </p>
+                  <p><strong className="text-gray-700">Risk Score:</strong> {selectedZone.riskLevel}/100</p>
+                  <p><strong className="text-gray-700">Confidence:</strong> {selectedZone.confidence}%</p>
+                  <p><strong className="text-gray-700">Timeframe:</strong> {selectedZone.timeframe}</p>
+                </div>
+              </div>
+            )}
+
+            {!selectedPoint && !selectedZone && (
+              <AIInsightsPanel insights={aiInsights} statistics={statistics} />
+            )}
           </div>
         </div>
       </div>
     </div>
   );
+};
+
+// AI Prediction Service (simplified for React)
+class AIPredictionService {
+  static generatePredictions(currentData) {
+    const predictions = [];
+    let predictionId = 1000;
+
+    currentData.forEach(point => {
+      if (point.level === "high" || point.level === "medium") {
+        const spreadFactor = point.level === "high" ? 1.5 : 1.0;
+        const reportWeight = Math.min(point.reports / 10, 2);
+        
+        const zones = [
+          { latOffset: 8, lngOffset: 10 },
+          { latOffset: -8, lngOffset: 10 },
+          { latOffset: 10, lngOffset: -8 },
+          { latOffset: -5, lngOffset: 15 }
+        ];
+
+        zones.forEach((zone, idx) => {
+          const riskLevel = this.calculateRiskLevel(point, spreadFactor, reportWeight, idx);
+          
+          if (riskLevel > 30) {
+            predictions.push({
+              id: predictionId++,
+              lat: point.lat + zone.latOffset,
+              lng: point.lng + zone.lngOffset,
+              riskLevel,
+              predictedLevel: this.getRiskCategory(riskLevel),
+              confidence: this.calculateConfidence(point.reports, riskLevel),
+              timeframe: this.getTimeframe(riskLevel)
+            });
+          }
+        });
+      }
+    });
+
+    return predictions;
+  }
+
+  static calculateRiskLevel(point, spreadFactor, reportWeight, zoneIndex) {
+    const baseRisk = point.level === "high" ? 75 : 55;
+    const reportInfluence = reportWeight * 10;
+    const distanceDecay = (4 - zoneIndex) * 5;
+    const randomVariation = Math.random() * 10;
+    
+    return Math.min(100, Math.round(baseRisk * spreadFactor + reportInfluence + distanceDecay + randomVariation));
+  }
+
+  static getRiskCategory(risk) {
+    if (risk >= 70) return "high";
+    if (risk >= 45) return "medium";
+    return "low";
+  }
+
+  static calculateConfidence(reports, riskLevel) {
+    const dataQuality = Math.min(reports / 20, 1) * 40;
+    const baseConfidence = 45;
+    const riskFactor = riskLevel > 60 ? 15 : 10;
+    
+    return Math.min(100, Math.round(baseConfidence + dataQuality + riskFactor));
+  }
+
+  static getTimeframe(risk) {
+    if (risk >= 75) return "1-2 months";
+    if (risk >= 60) return "2-4 months";
+    if (risk >= 45) return "4-6 months";
+    return "6-12 months";
+  }
+
+  static generateInsights(data) {
+    const highRisk = data.filter(d => d.level === "high").length;
+    const mediumRisk = data.filter(d => d.level === "medium").length;
+    
+    const trendScore = (highRisk * 0.5 + mediumRisk * 0.3) / data.length;
+    const overallTrend = trendScore > 0.2 ? "increasing" : trendScore < -0.1 ? "decreasing" : "stable";
+
+    const highRiskAreas = data
+      .filter(d => d.level === "high")
+      .sort((a, b) => b.reports - a.reports)
+      .slice(0, 3)
+      .map(d => d.location);
+
+    const recommendedActions = [];
+    if (trend === "increasing") {
+      recommendedActions.push("Urgent: Deploy eradication teams to high-risk zones immediately");
+      recommendedActions.push("Increase community awareness campaigns in buffer zones");
+    }
+    if (highRisk >= 3) {
+      recommendedActions.push("Prioritize coordinated action in the most affected regions");
+    }
+    recommendedActions.push("Continue regular community reporting to track spread patterns");
+
+    const predictedSpread = Math.round(highRisk * 8 + mediumRisk * 4);
+    const affectedAreaKm2 = (highRisk * 15 + mediumRisk * 8) * 1.5;
+    const monthlyGrowthRate = predictedSpread / 4;
+
+    return {
+      overallTrend,
+      highRiskAreas,
+      recommendedActions,
+      predictedSpread,
+      affectedAreaKm2,
+      monthlyGrowthRate
+    };
+  }
+
+  static computeStatistics(data) {
+    const totalInfested = data.filter(d => d.level !== "none").length;
+    const clearZones = data.filter(d => d.level === "none").length;
+    const criticalAreas = data.filter(d => d.level === "high").length;
+    const totalReports = data.reduce((sum, d) => sum + d.reports, 0);
+
+    const averageSpreadRate = data
+      .filter(d => d.level !== "none")
+      .reduce((sum, d) => {
+        const rate = d.level === "high" ? 2.5 : d.level === "medium" ? 1.5 : 0.8;
+        return sum + rate;
+      }, 0) / Math.max(totalInfested, 1);
+
+    const communityEngagement = Math.min(100, Math.round((totalReports / data.length) * 3.5));
+    const predictionAccuracy = Math.min(95, 65 + Math.round(totalReports / 3));
+
+    return {
+      totalInfested,
+      clearZones,
+      averageSpreadRate: Math.round(averageSpreadRate * 100) / 100,
+      criticalAreas,
+      communityEngagement,
+      predictionAccuracy
+    };
+  }
 }
